@@ -1,49 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Currency Converter</title>
-    <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div id="app">
-      <div id="container">
-        <div class="showcurrency">
-          <p>
-            1 {{upcontents.dollor}} = {{parseFloat(parseFloat(upcontents.rate /
-            downcontents.rate).toFixed(4))}} {{downcontents.dollor}}
-          </p>
-        </div>
-        <div class="currencyconverter">
-          <input
-            type="text"
-            v-model="input.upMoney"
-            v-on:input="calcExchangeRate(true);"
-          />
-          <select v-model="input.upCountry" v-on:change="upchangedown">
-            <option v-for="item in countrylist.sort">{{item}}</option>
-          </select>
-        </div>
-        <!--       ↑上      分隔線       ↓下      -->
-        <div class="currencyconverter">
-          <input
-            type="text"
-            v-model="input.downMoney"
-            v-on:input="calcExchangeRate(false);"
-          />
-          <select v-model="input.downCountry" v-on:change="upchangedown">
-            <option v-for="item in countrylist.sort">{{item}}</option>
-          </select>
-        </div>
-      </div> 
-    </div>
-    <!--               script 分隔線               -->
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.9/vue.js"
-      integrity="sha512-o9SZrtqlGkpa7EF+dDrNjEdRFFYhymlrBzDKpolHNolxsyx0IcXAbEm9i1e8QpoiMgEdKZVtY8XiK1t8i6jVDA=="
-      crossorigin="anonymous"
-    ></script>
-
-    <script src="script.js"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
