@@ -39,20 +39,33 @@ const back = reactive({})
 
 // 設定預設匯率
 const setDefalut = (defaultCurrency) => {
-  const tempRate = rateLists.value.filter(item => item.currency === defaultCurrency)[0]
-  back.currency = tempRate.currency
-  back.rate = tempRate.cash
-  back.input = tempRate.cash
+  setCurrency('back', defaultCurrency)
 }
 
-const calcExchangeRate = (target) => {
-  console.log(target)
+const targets = { // targets 集合
+  front,
+  back
+}
+// 設定匯率
+const setCurrency = (target, currency) => {
+  const tempRate = rateLists.value.filter(item => item.currency === currency)[0]
+  targets[target].currency = tempRate.currency
+  targets[target].rate = tempRate.cash
+  calcExchangeRate(target)
 }
 
+// 變更匯率
 const changeCurrency = (target) => {
-  console.log(front)
-  console.log(back)
+  setCurrency(target, targets[target].currency)
 }
+
+// 
+const calcExchangeRate = (target) => {
+  const otherTarget = target === 'front' ? 'back' : 'front'
+  targets[target].input = parseFloat(parseFloat((targets[otherTarget].input * targets[otherTarget].rate) / targets[target].rate).toFixed(4))
+}
+
+
 </script>
 
 <template>
@@ -67,7 +80,7 @@ const changeCurrency = (target) => {
       <input
         type="text"
         v-model="front.input"
-        @input="calcExchangeRate('front');"
+        @input="calcExchangeRate('back');"
       />
       <select v-model="front.currency" @change="changeCurrency('front')">
         <option
@@ -84,7 +97,7 @@ const changeCurrency = (target) => {
       <input
         type="text"
         v-model="back.input"
-        @input="calcExchangeRate('back');"
+        @input="calcExchangeRate('front');"
       />
       <select v-model="back.currency" @change="changeCurrency('back')">
         <option
