@@ -1,44 +1,72 @@
 <script setup>
-import axios from 'axios';
 import { onMounted, ref, reactive } from 'vue'
+import { fetchExchangeRates, getLastUpdateTime } from './services/exchangeRateService'
 
 onMounted(async () => {
   await getExchangeRate()
-  setDefalut('USD')
+  setDefault('USD')
 })
 
-const rateLists = ref([{
-  currency_name: '新台幣',
-  currency: 'TWD',
-  cash: 1
-}])
+const rateLists = ref([])
 
-// 取得匯率
-const getExchangeRate = () => {
-  return axios.get('/CurrencyConverter/exchange_rate.json').then((res) => {
-    const newRates = res.data.map(item => {
-      return {
-        currency_name: item.currency.split(' ')[0],
-        currency: item.currency.split(' ')[1].replace(/\(|\)/g, ''),
-        cash: parseFloat(item.cash_ask)
-      }
-    })
-    rateLists.value = rateLists.value.concat(newRates)
-  }).catch((err) => {
-    console.log(err)
-  })
+// Loading and error states
+const isLoading = ref(false)
+const error = ref(null)
+const lastUpdated = ref(null)
+
+// 取得匯率 (from API with caching and fallback)
+const getExchangeRate = async (forceRefresh = false) => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const newRates = await fetchExchangeRates('TWD', forceRefresh)
+    // Deduplicate by currency code (keep first occurrence)
+    const seen = new Set()
+    const unique = []
+    for (const r of newRates) {
+      if (!r || !r.currency) continue
+      if (seen.has(r.currency)) continue
+      seen.add(r.currency)
+      unique.push(r)
+    }
+    rateLists.value = unique
+
+    // Update last update timestamp
+    lastUpdated.value = getLastUpdateTime()
+
+    console.log('Exchange rates updated successfully')
+    // Set sensible defaults if not already set
+    const hasTWD = rateLists.value.find(r => r.currency === 'TWD')
+    const hasUSD = rateLists.value.find(r => r.currency === 'USD')
+    if (!front.currency && hasTWD) {
+      setCurrency('front', 'TWD')
+    }
+    if (!back.currency && hasUSD) {
+      setCurrency('back', 'USD')
+    }
+  } catch (err) {
+    error.value = `Failed to load exchange rates: ${err.message}`
+    console.error('Error fetching exchange rates:', err)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const front = reactive({
-  currency: 'TWD',
-  rate: 1,
+  currency: '',
+  rate: 0,
   input: 1
 })
 
-const back = reactive({})
+const back = reactive({
+  currency: '',
+  rate: 0,
+  input: 0
+})
 
 // 設定預設匯率
-const setDefalut = (defaultCurrency) => {
+const setDefault = (defaultCurrency) => {
   setCurrency('back', defaultCurrency)
 }
 
@@ -48,7 +76,12 @@ const targets = { // targets 集合
 }
 // 設定匯率
 const setCurrency = (target, currency) => {
-  const tempRate = rateLists.value.filter(item => item.currency === currency)[0]
+  const tempRate = rateLists.value.find(item => item.currency === currency)
+  if (!tempRate) {
+    console.warn(`setCurrency: currency ${currency} not found`)
+    return
+  }
+  console.log(`setCurrency -> target=${target} currency=${currency} rate=${tempRate?.cash}`)
   targets[target].currency = tempRate.currency
   targets[target].rate = tempRate.cash
   calcExchangeRate(target)
@@ -59,10 +92,18 @@ const changeCurrency = (target) => {
   setCurrency(target, targets[target].currency)
 }
 
-// 
+// Calculate exchange rate between targets
 const calcExchangeRate = (target) => {
   const otherTarget = target === 'front' ? 'back' : 'front'
-  targets[target].input = parseFloat(parseFloat((targets[otherTarget].input * targets[otherTarget].rate) / targets[target].rate).toFixed(4))
+  // Rates are stored as "units of currency per TWD" (e.g. JPY = 4.9 means 1 TWD = 4.9 JPY)
+  // To convert: target_input = source_input * (source.rate / target.rate)
+  const sourceInput = parseFloat(targets[otherTarget].input) || 0
+  const sourceRate = parseFloat(targets[otherTarget].rate) || 0
+  const targetRate = parseFloat(targets[target].rate) || 0
+  const inTWD = sourceInput * sourceRate
+  const result = targetRate > 0 ? inTWD / targetRate : 0
+  console.log(`calcExchangeRate: source=${targets[otherTarget].currency} input=${sourceInput} sourceRate=${sourceRate} target=${targets[target].currency} targetRate=${targetRate} inTWD=${inTWD} result=${result}`)
+  targets[target].input = parseFloat(result.toFixed(4))
 }
 
 
@@ -70,10 +111,33 @@ const calcExchangeRate = (target) => {
 
 <template>
   <div id="container">
+    <!-- Error message display -->
+    <div v-if="error" class="error-message">
+      ⚠️ {{ error }}
+    </div>
+    
+    <!-- Loading indicator -->
+    <div v-if="isLoading" class="loading-indicator">
+      Loading rates...
+    </div>
+    
+    <!-- Last updated timestamp -->
+    <div v-if="lastUpdated && !isLoading" class="last-updated">
+      Last updated: {{ lastUpdated.toLocaleTimeString() }}
+    </div>
+    
+    <!-- Refresh button -->
+    <button 
+      @click="getExchangeRate(true)" 
+      :disabled="isLoading"
+      class="refresh-button"
+    >
+      {{ isLoading ? 'Refreshing...' : 'Refresh Rates' }}
+    </button>
+
     <div class="showcurrency">
       <p>
-        1 {{front.currency}} = {{parseFloat(parseFloat(front.rate /
-        back.rate).toFixed(4))}} {{back.currency}}
+        1 {{front.currency}} = {{ (back.rate && front.rate) ? parseFloat((front.rate / back.rate).toFixed(4)) : '—' }} {{back.currency}}
       </p>
     </div>
     <div class="currencyconverter">
@@ -116,11 +180,59 @@ const calcExchangeRate = (target) => {
 <style scoped>
 #container {
   width: 300px;
-  height: 300px;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 10px;
+}
+
+.error-message {
+  background-color: #fee;
+  color: #c33;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  max-width: 250px;
+  text-align: center;
+}
+
+.loading-indicator {
+  color: #ffa500;
+  font-size: 14px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.last-updated {
+  color: #888;
+  font-size: 11px;
+}
+
+.refresh-button {
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.refresh-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
 .showcurrency {

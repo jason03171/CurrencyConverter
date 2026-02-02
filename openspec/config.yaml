@@ -1,0 +1,38 @@
+schema: spec-driven
+
+# Project context
+context: |
+  Tech Stack: Vue 3 (Composition API, <script setup>), Vite, Axios, vanilla CSS
+  Package Manager: npm
+  Module Type: ES modules
+  
+  Code Conventions:
+  - Use <script setup> for all Vue components
+  - camelCase for variables and functions
+  - PascalCase for component names
+  - Use reactive() for complex state, ref() for primitive values
+  - Include error handling in axios calls
+  - Prefer composition functions for reusable logic
+  
+  Domain: Currency conversion web app
+  - Fetches exchange rates from exchange_rate.json
+  - Supports bidirectional currency conversion
+  - Default currency: USD
+  - Multi-language support (Chinese labels present)
+  
+  Known Issues:
+  - Function typo: setDefalut should be setDefault
+  - Exchange rates are static (JSON file) - consider live API integration
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Always include a "Non-goals" section
+    - Link to relevant code files
+    - Consider impact on existing functionality
+  tasks:
+    - Break implementation into chunks of max 2 hours work
+    - Include verification steps
+    - Test in development mode first
+    - Update README if adding new features
