@@ -8,7 +8,18 @@ onMounted(async () => {
   // Load recent currencies
   recentCurrencies.value = getRecentCurrencies(3)
   setDefault('USD')
+  // Restore theme from localStorage
+  const saved = localStorage.getItem('theme')
+  if (saved) document.documentElement.setAttribute('data-theme', saved)
 })
+
+const theme = ref(document.documentElement.getAttribute('data-theme') || 'dark')
+
+const toggleTheme = () => {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', theme.value)
+  localStorage.setItem('theme', theme.value)
+}
 
 const rateLists = ref([])
 
@@ -137,6 +148,15 @@ const calcExchangeRate = (target) => {
 
 <template>
   <div id="container">
+    <header class="app-header">
+      <div class="header-left"></div>
+      <div class="header-right">
+        <button class="theme-toggle" @click="toggleTheme" :aria-pressed="theme === 'light'">
+          {{ theme === 'light' ? '🌞' : '🌙' }}
+        </button>
+      </div>
+    </header>
+    <div class="card">
     <!-- Error message display -->
     <div v-if="error" class="error-message">
       ⚠️ {{ error }}
@@ -249,6 +269,7 @@ const calcExchangeRate = (target) => {
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <style scoped>
@@ -263,10 +284,10 @@ const calcExchangeRate = (target) => {
 }
 
 .error-message {
-  background-color: #fee;
-  color: #c33;
-  padding: 10px;
-  border-radius: 5px;
+  background-color: rgba(239,68,68,0.08);
+  color: var(--color-error);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   margin-bottom: 10px;
   max-width: 250px;
@@ -285,27 +306,28 @@ const calcExchangeRate = (target) => {
 }
 
 .last-updated {
-  color: #888;
-  font-size: 11px;
+  color: var(--color-muted);
+  font-size: var(--font-size-base);
 }
 
 .refresh-button {
   padding: 8px 16px;
-  background-color: #4CAF50;
+  background-color: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 12px;
-  transition: background-color 0.3s;
+  transition: transform 0.12s ease;
 }
 
 .refresh-button:hover:not(:disabled) {
-  background-color: #45a049;
+  transform: translateY(-1px);
+  background-color: var(--color-primary-600);
 }
 
 .refresh-button:disabled {
-  background-color: #cccccc;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -314,7 +336,7 @@ const calcExchangeRate = (target) => {
 }
 
 .showcurrency p {
-  color: white;
+  color: var(--color-text);
   font-size: 20px;
 }
 
@@ -339,23 +361,55 @@ const calcExchangeRate = (target) => {
 }
 
 .filter-input {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 6px 8px;
   font-size: 12px;
-  border: 1px solid #ccc;
-  transition: border-color 0.2s;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--color-card);
+  color: var(--color-text);
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .filter-input:focus {
   outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 3px rgba(76, 175, 80, 0.3);
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(76,175,80,0.12);
 }
 
 .currencyconverter select {
-  height: 26px;
-  border-radius: 20px;
-  padding-left: 5px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  padding-left: 10px;
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.app-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.theme-toggle {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.card {
+  width: 320px;
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  box-shadow: var(--shadow-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
 }
 
 </style>
