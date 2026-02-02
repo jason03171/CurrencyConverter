@@ -1,18 +1,39 @@
 <script setup>
-import { onMounted, ref, reactive } from 'vue'
+import { onMounted, ref, reactive, computed } from 'vue'
 import { fetchExchangeRates, getLastUpdateTime } from './services/exchangeRateService'
+import { addRecentCurrency, getRecentCurrencies } from './services/currencyService'
 
 onMounted(async () => {
   await getExchangeRate()
+  // Load recent currencies
+  recentCurrencies.value = getRecentCurrencies(3)
   setDefault('USD')
 })
 
 const rateLists = ref([])
 
+// Filter and recent currencies
+const filterQuery = ref('')
+const recentCurrencies = ref([])
+
 // Loading and error states
 const isLoading = ref(false)
 const error = ref(null)
 const lastUpdated = ref(null)
+
+// Computed property to filter currencies
+const filteredRateList = computed(() => {
+  if (!filterQuery.value.trim()) {
+    return rateLists.value
+  }
+  const query = filterQuery.value.toLowerCase()
+  return rateLists.value.filter(item => {
+    return (
+      item.currency.toLowerCase().includes(query) ||
+      (item.currency_name && item.currency_name.toLowerCase().includes(query))
+    )
+  })
+})
 
 // 取得匯率 (from API with caching and fallback)
 const getExchangeRate = async (forceRefresh = false) => {
@@ -84,6 +105,11 @@ const setCurrency = (target, currency) => {
   console.log(`setCurrency -> target=${target} currency=${currency} rate=${tempRate?.cash}`)
   targets[target].currency = tempRate.currency
   targets[target].rate = tempRate.cash
+  
+  // Track recent currency
+  addRecentCurrency(currency)
+  recentCurrencies.value = getRecentCurrencies(3)
+  
   calcExchangeRate(target)
 }
 
@@ -146,16 +172,40 @@ const calcExchangeRate = (target) => {
         v-model="front.input"
         @input="calcExchangeRate('back');"
       />
-      <select v-model="front.currency" @change="changeCurrency('front')">
-        <option
-          v-for="item in rateLists"
-          :key="`front${item.currency}`"
-          :value="item.currency"
-          :label="item.currency_name"
-        >
-          {{ item.currency_name }}
-        </option>
-      </select>
+      <div class="select-wrapper">
+        <input 
+          type="text" 
+          v-model="filterQuery"
+          placeholder="Filter currencies..."
+          class="filter-input"
+          aria-label="Filter currencies"
+        />
+        <select v-model="front.currency" @change="changeCurrency('front')" aria-label="Select front currency">
+          <!-- Recently Used Section -->
+          <optgroup v-if="recentCurrencies.length > 0" label="Recently Used">
+            <option
+              v-for="recentCode in recentCurrencies"
+              :key="`recent-front-${recentCode}`"
+              :value="recentCode"
+              :label="rateLists.find(r => r.currency === recentCode)?.currency_name || recentCode"
+            >
+              {{ rateLists.find(r => r.currency === recentCode)?.currency_name || recentCode }}
+            </option>
+          </optgroup>
+          
+          <!-- All Currencies (filtered) -->
+          <optgroup label="All Currencies">
+            <option
+              v-for="item in filteredRateList"
+              :key="`front${item.currency}`"
+              :value="item.currency"
+              :label="item.currency_name"
+            >
+              {{ item.currency_name }}
+            </option>
+          </optgroup>
+        </select>
+      </div>
     </div>
     <div class="currencyconverter">
       <input
@@ -163,16 +213,40 @@ const calcExchangeRate = (target) => {
         v-model="back.input"
         @input="calcExchangeRate('front');"
       />
-      <select v-model="back.currency" @change="changeCurrency('back')">
-        <option
-          v-for="item in rateLists"
-          :key="`front${item.currency}`"
-          :value="item.currency"
-          :label="item.currency_name"
-        >
-          {{ item.currency_name }}
-        </option>
-      </select>
+      <div class="select-wrapper">
+        <input 
+          type="text" 
+          v-model="filterQuery"
+          placeholder="Filter currencies..."
+          class="filter-input"
+          aria-label="Filter currencies"
+        />
+        <select v-model="back.currency" @change="changeCurrency('back')" aria-label="Select back currency">
+          <!-- Recently Used Section -->
+          <optgroup v-if="recentCurrencies.length > 0" label="Recently Used">
+            <option
+              v-for="recentCode in recentCurrencies"
+              :key="`recent-back-${recentCode}`"
+              :value="recentCode"
+              :label="rateLists.find(r => r.currency === recentCode)?.currency_name || recentCode"
+            >
+              {{ rateLists.find(r => r.currency === recentCode)?.currency_name || recentCode }}
+            </option>
+          </optgroup>
+          
+          <!-- All Currencies (filtered) -->
+          <optgroup label="All Currencies">
+            <option
+              v-for="item in filteredRateList"
+              :key="`back${item.currency}`"
+              :value="item.currency"
+              :label="item.currency_name"
+            >
+              {{ item.currency_name }}
+            </option>
+          </optgroup>
+        </select>
+      </div>
     </div>
   </div>
 </template>
@@ -246,15 +320,39 @@ const calcExchangeRate = (target) => {
 
 .currencyconverter {
   margin: 5px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.currencyconverter input {
+.currencyconverter input[type="text"]:not(.filter-input) {
   border-radius: 10px;
   height: 20px;
   padding-left: 10px;
 }
 
-.currencyconverter select{
+.select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.filter-input {
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  transition: border-color 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 3px rgba(76, 175, 80, 0.3);
+}
+
+.currencyconverter select {
   height: 26px;
   border-radius: 20px;
   padding-left: 5px;

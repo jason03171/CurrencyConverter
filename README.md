@@ -11,6 +11,8 @@ A real-time currency converter application that fetches live exchange rates with
 - 🔃 **Manual Refresh** - Users can manually refresh rates anytime
 - 📱 **Responsive Design** - Works on desktop and mobile devices
 - ⚡ **Bidirectional Conversion** - Convert between two currencies instantly
+- 🔍 **Currency Filtering** - Quick search to filter currencies by code or name
+- ⭐ **Recent Currencies** - Top 3 recently used currencies appear at the top of dropdown for quick access
 
 ## Tech Stack
 
@@ -92,10 +94,17 @@ You can switch to alternative exchange rate APIs:
 2. **Force Refresh:** Click the "Refresh Rates" button to fetch latest data
 3. **Check localStorage:** Open DevTools (F12) → Application → localStorage
 
+### Currency Filtering & Recent Currencies
+- **Filter Input:** Type currency code (e.g., "USD") or name (e.g., "Dollar")
+- **Recent Currencies:** Top 3 recently used currencies are saved automatically
+- **Clear History:** Recent currencies are stored in localStorage; clear via DevTools if needed
+- **Offline Mode:** Recent currencies persist offline in localStorage
+
 ### Offline Mode
 - The app works offline using cached/static rates
 - All features remain functional except for refreshing from the API
 - Cached rates are preserved for 1 hour
+- Recent currencies are preserved from localStorage
 
 ## Development Notes
 
@@ -109,11 +118,30 @@ Edit `src/App.vue` and update the `fetchExchangeRates()` call:
 await fetchExchangeRates('USD') // Change 'TWD' to desired currency
 ```
 
+### Currency Filtering & Recent Tracking
+The app includes a `currencyService.js` that manages:
+- **Recent Currencies:** Stored in localStorage with timestamps and usage counts
+- **Max Recent:** Limited to top 10 most recent currencies (default display: top 3)
+- **Filtering:** Real-time search across currency codes and names
+- **Storage Key:** `recentCurrencies` in localStorage (JSON format with version)
+
+Example usage:
+```javascript
+import { addRecentCurrency, getRecentCurrencies } from './services/currencyService'
+
+// Track a currency selection
+addRecentCurrency('USD')
+
+// Retrieve top 3 recent currencies
+const recent = getRecentCurrencies(3) // ['USD', 'EUR', 'JPY']
+```
+
 ### Performance Optimization
 - API calls are throttled to every 1 hour
 - Results are cached in localStorage
 - Failed requests don't block the UI
 - Loading states provide user feedback
+- Currency filtering is client-side (instant)
 
 ## Browser Support
 - Chrome/Edge (latest)
