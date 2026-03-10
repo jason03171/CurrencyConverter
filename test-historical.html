@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Rates Test</title>
+</head>
+<body>
+    <h1>Testing Historical Rates API</h1>
+    <button id="testBtn">Test Historical Rates</button>
+    <button id="mockBtn">Test with Mock Data</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { fetchHistoricalRates } from './src/services/exchangeRateService.js';
+
+        const testBtn = document.getElementById('testBtn');
+        const mockBtn = document.getElementById('mockBtn');
+        const resultDiv = document.getElementById('result');
+
+        testBtn.addEventListener('click', async () => {
+            resultDiv.textContent = 'Testing real API...';
+            try {
+                const data = await fetchHistoricalRates('TWD', 'USD', 7);
+                resultDiv.innerHTML = `
+                    <h2>Success!</h2>
+                    <p>Data points: ${data.length}</p>
+                    <p>Sample data:</p>
+                    <pre>${JSON.stringify(data.slice(0, 3), null, 2)}</pre>
+                    <p>Data format: date=${typeof data[0]?.date}, rate=${typeof data[0]?.rate}</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<h2>Error</h2><p>${error.message}</p><p>API可能不支持歷史數據，使用mock測試</p>`;
+            }
+        });
+
+        mockBtn.addEventListener('click', () => {
+            // Test data transformation with mock API response
+            const mockApiResponse = {
+                rates: {
+                    "2024-01-01": { "USD": 0.032, "EUR": 0.029 },
+                    "2024-01-02": { "USD": 0.0321, "EUR": 0.0291 },
+                    "2024-01-03": { "USD": 0.0319, "EUR": 0.0289 }
+                }
+            };
+
+            // Simulate the transformation
+            const rates = mockApiResponse.rates || {};
+            const transformed = Object.entries(rates)
+                .map(([date, dailyRates]) => ({
+                    date,
+                    rate: parseFloat(dailyRates['USD'])
+                }))
+                .filter(item => !isNaN(item.rate))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            resultDiv.innerHTML = `
+                <h2>Mock Data Transformation Test</h2>
+                <p>Transformed data points: ${transformed.length}</p>
+                <pre>${JSON.stringify(transformed, null, 2)}</pre>
+                <p>Data format: date=${typeof transformed[0]?.date}, rate=${typeof transformed[0]?.rate}</p>
+            `;
+        });
+    </script>
+</body>
+</html>

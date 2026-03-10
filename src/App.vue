@@ -2,6 +2,7 @@
 import { onMounted, ref, reactive, computed } from 'vue'
 import { fetchExchangeRates, getLastUpdateTime } from './services/exchangeRateService'
 import { addRecentCurrency, getRecentCurrencies } from './services/currencyService'
+import ChartModal from './components/ChartModal.vue'
 
 onMounted(async () => {
   await getExchangeRate()
@@ -31,6 +32,7 @@ const recentCurrencies = ref([])
 const isLoading = ref(false)
 const error = ref(null)
 const lastUpdated = ref(null)
+const showChartModal = ref(false)
 
 // Computed property to filter currencies
 const filteredRateList = computed(() => {
@@ -185,6 +187,13 @@ const calcExchangeRate = (target) => {
       <p>
         1 {{front.currency}} = {{ (back.rate && front.rate) ? parseFloat((front.rate / back.rate).toFixed(4)) : '—' }} {{back.currency}}
       </p>
+      <button 
+        @click="showChartModal = true"
+        :disabled="!front.currency || !back.currency"
+        class="history-button"
+      >
+        📈 查看歷史
+      </button>
     </div>
     <div class="currencyconverter">
       <input
@@ -269,6 +278,14 @@ const calcExchangeRate = (target) => {
       </div>
     </div>
   </div>
+
+  <!-- Chart Modal -->
+  <ChartModal
+    :is-open="showChartModal"
+    :base-currency="front.currency"
+    :target-currency="back.currency"
+    @close="showChartModal = false"
+  />
   </div>
 </template>
 
@@ -410,6 +427,28 @@ const calcExchangeRate = (target) => {
   flex-direction: column;
   align-items: center;
   gap: var(--space-md);
+}
+
+.history-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform 0.12s ease;
+}
+
+.history-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background-color: var(--color-primary-600);
+}
+
+.history-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 </style>
